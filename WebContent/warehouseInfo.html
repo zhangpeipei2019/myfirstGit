@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>原材料信息</title>
+<!-- <link href="../css/style.css" rel="stylesheet" type="text/css" /> -->
+<script type="text/javascript" src="../js/jquery-1.4.2.js"></script>
+
+<!--
+   jquery-easyui
+-->
+<!-- <script type="text/javascript" src="../js/jquery-easyui-1.3.3/jquery.min.js" charset="utf-8"></script> -->
+<link rel="stylesheet" type="text/css"
+	href="../js/jquery-easyui-1.3.3/themes/default/easyui.css"
+	charset="utf-8" />
+<link rel="stylesheet" type="text/css"
+	href="../js/jquery-easyui-1.3.3/themes/icon.css" charset="utf-8" />
+<script type="text/javascript"
+	src="../js/jquery-easyui-1.3.3/jquery.easyui.min.js" charset="utf-8"></script>
+<script type="text/javascript" src="../js/jquery-easyui-1.3.3/locale/easyui-lang-zh_CN.js"	charset="utf-8"></script>
+<script type="text/javascript" src="../js/datagrid-dnd.js"></script>
+	
+<script type="text/javascript">
+	$(function() {
+		/* 让dlg可以拖动，fail */
+		
+	});
+	//查询仓库信息
+	function searchWarehouseInfo() {
+		//$('#dg').datagrid 给该id对应的对象，赋予datagrid的属性
+		$('#dg').datagrid('load', {//再次请求该id对应的URL（即：查询所有） datagrid ??加载并显示第一页的行，如果指定 param 参数，它将替换 queryParams 特性。 
+			warehouse_name : $("#warehouse_name").val(),
+			warehouse_place : $("#warehouse_place").val(),
+			warehouse_person : $("#warehouse_person").val(),
+			warehouseType_name : $("#warehouseType_name").val()
+		});
+	}
+
+	//打开原材料信息添加界面
+	function openWarehouseInfoAdd() {
+		$("#dlg").dialog("open").dialog("setTitle", "添加仓库信息");
+		
+		$("#dlg").datagrid({
+	        fitColumns : false,
+	        striped : true,
+	        data : dataArray,
+	        onLoadSuccess:function(){
+	            //数据加载成功之后,使其可以拖动
+	            $(this).datagrid('enableDnd');
+	        },
+	        onDrop : function(targetRow,sourceRow,point){
+			// console.log(targetRow + "," + sourceRow + "," + point);
+	        }
+    	});
+		/* $("#dlg").dialog({draggable:true}) 错误 */
+		/*$('#warehouseType_name').combobox('setValue',{ "原料仓","成品仓", "退货仓"});
+		 $('#warehouseType_name').combobox('setValue', "成品仓");
+		$('#warehouseType_name').combobox('setValue', "退货仓"); */
+		url = "../warehouse.do?action=addWarehouseInfo";
+	}
+
+	//修改原材料信息功能
+	function openWarehouseInfoUpd() {
+		//获取选中的行，返回数组--》返回所有选中的行，当没有选中的记录时，将返回空数组。
+		var selectedRows = $("#dg").datagrid('getSelections');//datagrid
+		//只选择一行
+		if (selectedRows.length != 1) {
+			$.messager.alert('提示', '请先选择一条修改的数据！');
+			return;
+		}
+		//获取第一行的内容
+		var row = selectedRows[0];
+		$("#dlg").dialog("open").dialog("setTitle", "修改仓库信息");
+		
+		$("#dlg").datagrid({
+	        fitColumns : false,
+	        striped : true,
+	        data : dataArray,
+	        onLoadSuccess:function(){
+	            //数据加载成功之后,使其可以拖动
+	            $(this).datagrid('enableDnd');
+	        },
+	        onDrop : function(targetRow,sourceRow,point){
+			// console.log(targetRow + "," + sourceRow + "," + point);
+	        }
+    	});
+		//把这一行的内容加载到form(fm)中
+		//rawmat_id，rawmat_name,rawmat_place.....和表格中的名字一一对应
+		alert(row.warehouseType_name);
+		$("#fm").form("load", row);//将选中的一行的信息加载到id=#fm的form表单中
+		
+		//id为...的标签的 [属性],其值处于被选中的状态（可以不用，easyUI可以自己实现）
+		/* $("#warehouseType_name [value='" +row.warehouseType_name + "']").attr("selected", true); */
+
+		//设置rawmat_id属性readonly只读
+		$("#warehouse_id").attr("readonly", "readonly");
+
+		//alert(row.warehouse_id);
+		//发起异步请求
+		url = "../warehouse.do?action=updateWarehouseInfo&warehouse_id="+ row.warehouse_id;
+	}
+
+	//保存信息功能
+	function saveWarehouseInfo() {
+		//	alert(url);
+		$("#fm").form(
+				"submit",
+				{
+					url : url,
+					onSubmit : function() {
+						return $(this).form("validate");
+					},
+					success : function(result) {
+						var result = eval('(' + result + ')');
+						alert(result.errorMsg);
+						if (result.errorMsg) {
+							$.messager.alert('系统提示', "<font color=red>"
+									+ result.errorMsg + "</font>");
+							return;
+						} else {
+							$.messager.alert('系统提示', '保存成功');
+							closeWarehouseInfoAddDialog();
+							$("#dg").datagrid("reload");//datagrid
+						}
+					}
+				});
+	}
+	//关闭对话框
+	function closeWarehouseInfoAddDialog() {
+		$("#dlg").dialog("close");
+		$("#fm").form('clear');
+	}
+
+	//删除原材料信息
+	function deleteWarehouseInfo() {
+		//返回所有选中的行，当没有选中的记录时，将返回空数组
+		var selectedRows = $("#dg").datagrid('getSelections');//datagrid
+		if (selectedRows.length == 0) {
+			$.messager.alert('系统提示', '请选择要删除的数据！');
+			return;
+		}
+		//定义空数组
+		var strIds = [];
+		for (var i = 0; i < selectedRows.length; i++) {
+			//alert(selectedRows[i].userId);
+			strIds.push(selectedRows[i].warehouse_id);
+		}
+
+		var ids = strIds.join(",");//把数组转换位字符串数组用","分隔
+		$.messager.confirm("系统提示", "您确认要删除这<font color=red>"
+				+ selectedRows.length + "</font>条数据吗？", function(r) {
+			if (r) {
+				//发起异步请求
+				$.post("../warehouse.do?action=deleteWarehouseInfo", {
+					delIds : ids
+				}, function(result) {
+					if (result.success) {
+						$.messager.alert('系统提示', "您已成功删除<font color=red>"
+								+ result.delNums + "</font>条数据！");
+						$("#dg").datagrid("reload");//datagrid
+					} else {
+						$.messager.alert('系统提示', result.errorMsg);
+					}
+				}, "json");
+			}
+		});
+	}
+	/* $(function() {
+		$("#warehouse_id").blur(function(){
+			alert("ok");
+			//searchWarehouseInfo();
+	    });
+		
+	} */	
+
+</script>
+</head>
+<body>
+	<div id="win" iconCls="icon-save" title="My Window">
+
+
+		<table id="dg" title="仓库信息管理" class="easyui-datagrid"
+			fitColumns="true" pagination="true" rownumbers="true"
+			url="../warehouse.do?action=queryAllWarehouseInfo" fit="true"
+			toolbar="#tb">
+			<!-- fitColumns:自适应； pagination：分页；rownumbers：自动添加行号-->
+			<thead>
+				<tr>
+					<th field="cb" checkbox="true" align="center"></th>
+					<th field="warehouse_id" width="150" align="center">仓库编号</th>
+					<th field="warehouseType_name" width="150" align="center">仓库类型</th>
+					<th field="warehouse_name" width="150" align="center">仓库名称</th>
+					<th field="warehouse_person" width="150" align="center">仓库负责人</th>
+					<th field="warehouse_place" width="150" align="center">仓库地址</th>
+					<th field="warehouse_remark" width="130" align="center">仓库备注</th>
+				</tr>
+			</thead>
+
+		</table>
+		<div id="tb">
+			<div>
+				<!-- event.keyCode==13:回车键 -->
+				&nbsp;仓库名称：&nbsp;<input type="text" name="warehouse_name"
+					id="warehouse_name" size="20"
+					onkeydown="if(event.keyCode==13) searchWarehouseInfo()" />
+				&nbsp;仓库类型：&nbsp;<input type="text" name="warehouseType_name"
+					id="warehouseType_name" size="20"
+					onkeydown="if(event.keyCode==13) searchWarehouseInfo()" />
+				&nbsp;仓库负责人：&nbsp;<input type="text" name="warehouse_person"
+					id="warehouse_person" size="20"
+					onkeydown="if(event.keyCode==13) searchWarehouseInfo()" />	
+				&nbsp;仓库地址：&nbsp;<input type="text" name="warehouse_place"
+					id="warehouse_place" size="20"
+					onkeydown="if(event.keyCode==13) searchWarehouseInfo()" />
+					 
+				<a href="javascript:searchWarehouseInfo()" class="easyui-linkbutton"
+					iconCls="icon-search" plain="true">搜索</a>
+
+			</div>
+			<br>
+			<div>
+				<a href="javascript:openWarehouseInfoAdd()"
+					class="easyui-linkbutton" iconCls="icon-add" plain="true">添加</a> <a
+					href="javascript:openWarehouseInfoUpd()" class="easyui-linkbutton"
+					iconCls="icon-edit" plain="true">修改</a> <a
+					href="javascript:deleteWarehouseInfo()" class="easyui-linkbutton"
+					iconCls="icon-remove" plain="true">删除</a>
+			</div>
+
+		</div>
+
+		
+		<div id="dlg" class="easyui-dialog"
+			style="width: 600px; height: 400px; padding: 30px 20px" closed="true"
+			buttons="#dlg-buttons">
+			<form id="fm" method="post">
+				<table cellspacing="5px;">
+					<tr>
+						<td>仓库编号:</td>
+						<td><input type="text" id="warehouse_id" name="warehouse_id"
+							class="easyui-validatebox" required=true 
+							validType="midLength[2,5]" missingMessage="仓库编号名必填!"/>
+						</td>
+						<td>仓库类型：</td>
+						<td><!-- 法1 -->
+							<select name="warehouseType_name" id="warehouseType_name"
+								class="easyui-validatebox">
+									<option selected="selected" value="原料仓">原料仓</option>
+									<option value="成品仓">成品仓</option>
+									<option value="退货仓">退货仓</option>
+							</select>
+							<!-- 法2 -->
+							<!-- <input id="warehouseType_name" id="warehouseType_name" class="easyui-combobox"/>
+							 -->
+						</td>
+						
+					</tr>
+					<tr>
+						<td align="right">仓库名称:</td>
+						<td><input type="text" id="warehouse_name"
+							name="warehouse_name" class="easyui-validatebox" required=true
+							validType="midLength[2,5]" missingMessage="仓库名称必填!" value="" /></td>
+						<td>仓库负责人:</td>
+						<td><input type="text" id="warehouse_person"
+							name="warehouse_person" class="easyui-validatebox" required=true
+							validType="midLength[2,5]" missingMessage="仓库负责人必填!" value="" /></td>
+					</tr>
+					<tr>	
+						<td>仓库地址：</td>
+						<td><input type="text" name="warehouse_place"
+							id="warehouse_place" class="easyui-validatebox" /></td>
+					</tr>
+					<tr>
+						<td valign="top">备注：</td>
+						<td colspan="3"><textarea rows="7" cols="50"
+								id="warehouse_remark" name="warehouse_remark"
+								id="userDescription"></textarea></td>
+					</tr>
+				</table>
+			</form>
+		</div>
+		<div id="dlg-buttons">
+			<a href="javascript:saveWarehouseInfo()" class="easyui-linkbutton"
+				iconCls="icon-ok">保存</a> <a
+				href="javascript:closeWarehouseInfoAddDialog()"
+				class="easyui-linkbutton" iconCls="icon-cancel">关闭</a>
+		</div>
+	</div>
+</body>
+</html>
